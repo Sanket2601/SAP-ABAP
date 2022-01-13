@@ -1,0 +1,34 @@
+*&---------------------------------------------------------------------*
+*& Report ZPM_PLAN_CYCLE
+*&---------------------------------------------------------------------*
+*& Developer : USBHOSA Reporter : Ionut Otoiu
+*&---------------------------------------------------------------------*
+REPORT ZPM_PLAN_CYCLE.
+
+*----------------------------------------------------------------------*
+*INCLUDE:
+*----------------------------------------------------------------------*
+
+INCLUDE zpm_plan_cycle_top.      "Global Definitions
+
+INCLUDE zpm_plan_cycle_f00.      "Selection Screen
+
+INCLUDE zpm_plan_cycle_c01.      "Classes Definition
+
+INCLUDE zpm_plan_cycle_c02.      "Classes Implementation (ALV)
+
+INCLUDE zpm_plan_cycle_c03.      "Classes Implementation (Data)
+
+INCLUDE zpm_plan_cycle_f01.      "Authority Check
+
+INCLUDE zpm_plan_cycle_m01.      "Screen Modules
+
+*----------------------------------------------------------------------*
+START-OF-SELECTION.
+*----------------------------------------------------------------------*
+
+  PERFORM f_authority_check.
+
+* Create Report Object
+  CREATE OBJECT go_report.
+
