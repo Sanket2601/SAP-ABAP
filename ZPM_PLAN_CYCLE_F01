@@ -1,0 +1,11 @@
+*&---------------------------------------------------------------------*
+*&  Include           ZPM_PLAN_CYCLE_F01
+*&---------------------------------------------------------------------*
+FORM f_authority_check.
+      AUTHORITY-CHECK OBJECT 'C_STUE_BER'
+        ID 'BEGRU' FIELD s_begru.
+      IF sy-subrc <> 0.
+* Implement a suitable exception handling here
+    MESSAGE e001(zbeu_fi) WITH TEXT-t01.
+  ENDIF.
+ENDFORM.
