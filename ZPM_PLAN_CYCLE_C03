@@ -1,0 +1,465 @@
+*&---------------------------------------------------------------------*
+*&  Include           ZPM_PLAN_CYCLE_C03
+*&---------------------------------------------------------------------*
+CLASS lcl_data IMPLEMENTATION.
+
+  METHOD select_data.
+
+    me->select_sample_data( ).
+
+  ENDMETHOD.
+
+  METHOD select_sample_data.
+
+*Declared data and placed it in structure of ZPM_PLAN_CYCLE (to convert Floating point to Char)
+
+    DATA : lv_char TYPE rmipm-zykl1.
+
+*Logic for Translating Upper Text / Lower Text for the field WPTXT.
+    LOOP AT s_wptxt ASSIGNING FIELD-SYMBOL(<lfs_wptxt>).
+      TRANSLATE <lfs_wptxt>-low TO UPPER CASE.           "#EC TRANSLANG
+      TRANSLATE <lfs_wptxt>-high TO UPPER CASE.          "#EC TRANSLANG
+    ENDLOOP.
+*
+
+*Select data from mpla into internal table
+
+*+UBHOSA | RXEK957224 | 18th Feb 2021 | Addition of logic for Strategy / Multiple Cycles
+    SELECT
+      warpl
+      wptxt
+      tplnr
+      begru
+      objnr
+      mptyp
+      plan_sort
+    FROM
+      mpla
+      INTO TABLE lt_mpla
+      WHERE ( mptyp = gc_zm OR mptyp = gc_pm )
+*        AND tplnr     IN s_tplnr
+        AND warpl     IN s_warpl
+        AND plan_sort IN s_sort
+        AND begru     IN s_begru.
+*-UBHOSA | RXEK957224 | 18th Feb 2021 | Addition of logic for Strategy / Multiple Cycles
+
+*Loop for the logic of wptxt (Upper Case / Lower Case)
+
+    LOOP AT lt_mpla INTO DATA(ls_mpla).
+      TRANSLATE ls_mpla-wptxt TO UPPER CASE.
+      IF NOT ls_mpla-wptxt IN s_wptxt.
+        ls_mpla-del = abap_true.
+        MODIFY lt_mpla FROM ls_mpla TRANSPORTING del.
+      ENDIF.
+      CLEAR ls_mpla.
+    ENDLOOP.
+    DELETE lt_mpla WHERE del EQ abap_true.
+*
+
+    IF lt_mpla[] IS NOT INITIAL.
+
+*Select data from mmpt into internal table
+
+      SELECT
+        warpl
+        nummer
+        zykl1
+        zeieh
+        pak_text
+        point
+        zaehl
+      FROM
+        mmpt
+        INTO TABLE lt_mmpt
+        FOR ALL ENTRIES IN lt_mpla
+        WHERE warpl = lt_mpla-warpl
+        AND zeieh NE space.
+
+*Select data from mpos into internal table
+
+      SELECT
+        wapos
+        warpl
+        wstra
+        pstxt
+        plnty
+        plnnr
+        plnal
+        status
+        gewrk
+        iloan
+        auart
+        ilart
+      FROM mpos
+      INTO TABLE lt_mpos
+      FOR ALL ENTRIES IN lt_mpla
+      WHERE warpl = lt_mpla-warpl.
+*        *USBHOSA | 23rd March 2021 | Addition of logic for Strategy / Multiple Cycles
+*        AND auart IN s_auart.
+**USBHOSA | 23rd March 2021 | Addition of logic for Strategy / Multiple Cycles
+
+      IF NOT lt_mpos[] IS INITIAL.
+
+*Select data from iloa into internal table
+
+        SELECT
+          iloan
+          tplnr
+          abckz
+        FROM
+          iloa
+        INTO TABLE lt_iloa
+        FOR ALL ENTRIES IN lt_mpos
+        WHERE iloan = lt_mpos-iloan
+          AND tplnr IN s_tplnr.
+
+        IF lt_iloa[] IS NOT INITIAL.
+
+*Select data from iflotx into internal table
+
+          SELECT
+            tplnr
+            spras
+            pltxt
+            pltxu
+          FROM
+            iflotx
+          INTO TABLE lt_iflotx
+          FOR ALL ENTRIES IN lt_iloa
+          WHERE tplnr = lt_iloa-tplnr.
+
+          SELECT
+            spras
+            abckz
+            abctx
+          FROM
+            t370c_t
+          INTO TABLE lt_t370c_t
+          FOR ALL ENTRIES IN lt_iflotx
+          WHERE spras = lt_iflotx-spras.
+        ENDIF.
+      ENDIF.
+
+      IF lt_mpla[] IS NOT INITIAL.
+
+*Select data from t399g_t into internal table
+
+        SELECT
+          spras
+          plan_sort
+          txt
+        FROM
+          t399g_t
+        INTO TABLE lt_t399g_t
+        FOR ALL ENTRIES IN lt_mpla
+        WHERE plan_sort = lt_mpla-plan_sort.
+
+*Select data from crhd into internal table
+
+        IF NOT lt_mpos[] IS INITIAL.
+
+          SELECT
+            objty
+            objid
+            arbpl
+          FROM
+            crhd
+          INTO TABLE lt_crhd
+          FOR ALL ENTRIES IN lt_mpos
+          WHERE objid = lt_mpos-gewrk.
+        ENDIF.
+      ENDIF.
+
+    ENDIF.
+*+UBHOSA | RXEK957224 | 18th Feb 2021 | Addition of logic for Strategy / Multiple Cycles
+*Select data from t006 into internal table
+
+    SELECT
+      msehi
+      zaehl
+      nennr
+    FROM
+      t006
+    INTO TABLE lt_t006.
+
+*Define Ranges ( Used for Multiple Selections of TPLNR)
+
+    DATA : r_warpl TYPE RANGE OF mpla-warpl.
+    DATA :       wa_warpl LIKE LINE OF r_warpl.
+    DATA : r_wapos TYPE RANGE OF mpos-wapos.
+    DATA :       wa_wapos LIKE LINE OF r_wapos.
+
+    SELECT * FROM vimpos
+    INTO TABLE @DATA(lt_vimpos)
+    WHERE tplnr IN @s_tplnr.
+
+    LOOP AT lt_vimpos INTO DATA(ls_vimpos).
+      wa_warpl-sign = 'I'.
+      wa_warpl-option = 'EQ'.
+      wa_warpl-low = ls_vimpos-warpl.
+      wa_warpl-high = ' '.
+      APPEND wa_warpl TO r_warpl.
+      wa_wapos-sign = 'I'.
+      wa_wapos-option = 'EQ'.
+      wa_wapos-low = ls_vimpos-wapos.
+      wa_wapos-high = ' '.
+      APPEND wa_wapos TO r_wapos.
+    ENDLOOP.
+*-UBHOSA | RXEK957224 | 18th Feb 2021 | Addition of logic for Strategy / Multiple Cycles
+
+    LOOP AT lt_mpla INTO lw_mpla WHERE warpl IN r_warpl.
+*    LOOP AT lt_mpla INTO lw_mpla.
+
+      MOVE lw_iloa-tplnr TO lw_mpla-tplnr.    "Moved the value of tplnr as the tplnr is getting fetched from mpla in the iloa read statment
+
+      lw_final-warpl    = lw_mpla-warpl.
+      lw_final-wptxt    = lw_mpla-wptxt.
+      lw_final-plan_sort = lw_mpla-plan_sort.
+      lw_final-begru    = lw_mpla-begru.
+
+      READ TABLE lt_t399g_t INTO lw_t399g_t WITH KEY plan_sort = lw_mpla-plan_sort.
+      IF sy-subrc = 0.
+        lw_final-txt      = lw_t399g_t-txt.
+      ENDIF.
+
+      READ TABLE lt_mpos INTO lw_mpos WITH KEY warpl = lw_mpla-warpl.
+      IF sy-subrc = 0.
+        lw_final-wapos    = lw_mpos-wapos.
+        lw_final-pstxt    = lw_mpos-pstxt.
+        lw_final-auart    = lw_mpos-auart.
+        lw_final-ilart    = lw_mpos-ilart.
+
+        READ TABLE lt_iloa INTO lw_iloa WITH KEY iloan = lw_mpos-iloan.
+        IF sy-subrc = 0.
+          lw_final-tplnr = lw_iloa-tplnr.
+          lw_final-abckz = lw_iloa-abckz.
+        ENDIF.
+
+        READ TABLE lt_iflotx INTO lw_iflotx WITH KEY tplnr = lw_iloa-tplnr.
+        IF sy-subrc = 0.
+          lw_final-pltxt = lw_iflotx-pltxt.
+        ENDIF.
+
+        READ TABLE lt_t370c_t INTO lw_t370c_t WITH KEY abckz = lw_iloa-abckz.
+        IF sy-subrc = 0.
+          lw_final-abctx = lw_t370c_t-abctx.
+        ENDIF.
+
+      ENDIF.
+
+      READ TABLE lt_crhd INTO lw_crhd WITH KEY objid = lw_mpos-gewrk.
+      IF sy-subrc = 0 .
+        lw_final-arbpl    = lw_crhd-arbpl.
+      ENDIF.
+
+*Loop at MPOS table for Multiple Cycles
+
+*      LOOP AT lt_mpos INTO lw_mpos WHERE warpl IN r_warpl.
+      LOOP AT lt_mpos INTO lw_mpos WHERE wapos IN r_wapos.
+        READ TABLE lt_mmpt INTO lw_mmpt WITH KEY warpl = lw_mpla-warpl.
+*        READ TABLE lt_mmpt INTO lw_mmpt WITH KEY warpl = ls_vimpos-warpl.
+        IF sy-subrc = 0.                                            "For Single
+          lw_final-zeieh    = lw_mmpt-zeieh.
+          lw_final-point    = lw_mmpt-point.
+
+*Function Module for Unit conversion of Floating Point zykl1 to Char zykl1
+          CLEAR : lv_char.
+          CALL FUNCTION 'FLTP_CHAR_CONVERSION_FROM_SI'
+            EXPORTING
+              char_unit       = lw_mmpt-zeieh
+              decimals        = 0
+              exponent        = 0
+              fltp_value_si   = lw_mmpt-zykl1
+              indicator_value = gc_x
+              masc_symbol     = ' '
+            IMPORTING
+              char_value      = lv_char.
+
+          CONDENSE lv_char.
+          MOVE lv_char TO lw_final-lv_char.
+
+*Function Module for sttxt
+          CALL FUNCTION 'STATUS_TEXT_EDIT'
+            EXPORTING
+              objnr            = lw_mpla-objnr
+              spras            = sy-langu
+              flg_user_stat    = 'X'
+            IMPORTING
+              line             = lw_final-sttxt
+            EXCEPTIONS
+              object_not_found = 01.
+          IF NOT sy-subrc IS INITIAL.
+            CLEAR lw_final-sttxt.
+          ENDIF.
+
+          APPEND lw_final TO lt_final.
+
+**new****
+          CLEAR : lv_char, lw_iloa.
+
+*+USBHOSA | RXEK957224 | 18th Feb 2021 | Addition of logic for Strategy / Multiple Cycles
+
+        ELSE.                                                         "For Strategy
+
+          SELECT * FROM plas APPENDING TABLE ltt_plas
+             WHERE plnty = lw_mpos-plnty
+              AND plnnr = lw_mpos-plnnr
+              AND plnal = lw_mpos-plnal
+              ORDER BY PRIMARY KEY.
+
+
+          CALL FUNCTION 'CI03_READ_PLWP_TIME_INTERVAL'
+            EXPORTING
+              i_plnty      = lw_mpos-plnty
+              i_plnnr      = lw_mpos-plnnr
+              i_plnal      = lw_mpos-plnal
+              i_date_begin = sy-datum
+              i_date_end   = '99991231'
+            IMPORTING
+              e_plwp_tab   = ltt_plwp
+            CHANGING
+              c_plas_tab   = ltt_plas.
+
+          SORT ltt_plwp BY plnty plnnr plnal paket.
+          DELETE ADJACENT DUPLICATES FROM ltt_plwp COMPARING plnty plnnr plnal paket.
+
+          CALL FUNCTION 'IWP1_STRATEGY_READ'
+            EXPORTING
+              i_strat                   = lw_mpos-wstra
+              i_multicounterplan        = ' '
+            TABLES
+              t_package_data            = lt_package_data
+            CHANGING
+              c_t351                    = ls_c_t351
+            EXCEPTIONS
+              strategy_is_initial       = 1
+              strategy_not_found        = 2
+              strategy_without_packages = 3
+              no_cycle_set              = 4
+              no_strategy               = 5
+              OTHERS                    = 6.
+          IF sy-subrc <> 0.
+          ENDIF.
+
+          CLEAR : lw_t006.
+          DATA : days TYPE i.
+
+          LOOP AT lt_package_data INTO DATA(ls_package_data).
+            READ TABLE lt_t006 INTO lw_t006 WITH KEY msehi = ls_package_data-zeieht351p.
+            READ TABLE ltt_plwp  WITH KEY plnty = lw_mpos-plnty
+                                         plnnr = lw_mpos-plnnr
+                                         plnal = lw_mpos-plnal
+                                         paket = ls_package_data-zaehlt351p
+                                         TRANSPORTING NO FIELDS.
+            IF sy-subrc EQ 0 .
+              lv_temp_days = ceil( ( ls_package_data-zykztt351p / lw_t006-zaehl ) * lw_t006-nennr ).
+
+              CALL FUNCTION 'FLTP_CHAR_CONVERSION_FROM_SI'
+                EXPORTING
+                  char_unit       = ls_package_data-zeieht351p
+                  decimals        = 0
+                  exponent        = 0
+                  fltp_value_si   = ls_package_data-zykztt351p
+                  indicator_value = gc_x
+                  masc_symbol     = ' '
+                IMPORTING
+                  char_value      = lv_char.
+
+              CONDENSE lv_char.
+              READ TABLE lt_iloa INTO lw_iloa WITH KEY iloan = lw_mpos-iloan.
+              IF sy-subrc = 0.
+
+                lw_final-tplnr = lw_iloa-tplnr.
+                lw_final-abckz = lw_iloa-abckz.
+              ENDIF.
+              READ TABLE lt_mpla INTO lw_mpla WITH KEY warpl = lw_mpos-warpl.
+*              READ TABLE lt_mpla INTO lw_mpla WITH KEY warpl = lS_VIMPOS-warpl.
+              READ TABLE lt_iflotx INTO lw_iflotx WITH KEY tplnr = lw_iloa-tplnr.
+              IF sy-subrc = 0.
+
+                MOVE lw_iflotx-pltxt TO lw_final-pltxt.
+              ENDIF.
+              CLEAR : lw_t399g_t.
+              READ TABLE lt_t399g_t INTO lw_t399g_t WITH KEY plan_sort = lw_mpla-plan_sort.
+              IF sy-subrc = 0.
+                MOVE  lw_t399g_t-txt  TO lw_final-txt.
+              ENDIF.
+              MOVE lw_mpos-warpl TO lw_final-warpl.
+              MOVE lw_mpla-wptxt TO lw_final-wptxt.
+*              MOVE ls_vimpos-wptxt TO lw_final-wptxt.
+              MOVE lw_mpla-plan_sort TO lw_final-plan_sort.
+*              MOVE lw_t399g_t-txt TO lw_final-txt.
+              MOVE lv_char TO lw_final-lv_char.
+              MOVE ls_package_data-zeieht351p TO lw_final-zeieh.
+              MOVE lw_mmpt-point TO lw_final-point.
+              MOVE lw_mpos-wapos TO lw_final-wapos.
+              MOVE lw_mpos-pstxt TO lw_final-pstxt.
+              MOVE lw_mpos-auart TO lw_final-auart.
+              MOVE lw_mpos-ilart TO lw_final-ilart.
+              MOVE lw_crhd-arbpl TO lw_final-arbpl.
+              MOVE lw_mpla-begru TO lw_final-begru.
+              MOVE lw_t370c_t-abctx TO lw_final-abctx.
+*Function Module for sttxt
+              CALL FUNCTION 'STATUS_TEXT_EDIT'
+                EXPORTING
+                  objnr            = lw_mpla-objnr
+                  spras            = sy-langu
+                  flg_user_stat    = 'X'
+                IMPORTING
+                  line             = lw_final-sttxt
+                EXCEPTIONS
+                  object_not_found = 01.
+              IF NOT sy-subrc IS INITIAL.
+                CLEAR lw_final-sttxt.
+              ENDIF.
+
+
+              APPEND lw_final TO lt_final.
+              CLEAR : lw_final.
+
+              CLEAR : lw_t006, lw_mmpt.
+              CLEAR :  ls_package_data, lv_char.
+            ENDIF.
+            CLEAR:ls_package_data. "new
+          ENDLOOP.       "Package data loop
+
+          CLEAR : lw_mpos.
+          REFRESH : ltt_plas, ltt_plwp.
+        ENDIF.
+      ENDLOOP.         "Mpos loop
+
+      CLEAR : lw_mpos, lw_mmpt, lw_t006.
+      CLEAR : lw_mpla-warpl.
+
+
+
+    ENDLOOP.           "Main loop mpla
+    SORT lt_final BY warpl lv_char tplnr .
+    DELETE ADJACENT DUPLICATES FROM lt_final COMPARING warpl lv_char tplnr.
+
+
+*-USBHOSA | RXEK957224 | 18th Feb 2021 | Addition of logic for Strategy / Multiple Cycles
+
+*Logic for Selection Screen (For multiple selections if any) :
+
+    IF s_warpl IS NOT INITIAL.
+      DELETE lt_final WHERE warpl NOT IN s_warpl.
+    ENDIF.
+
+    IF s_tplnr IS NOT INITIAL.
+      DELETE lt_final WHERE tplnr NOT IN s_tplnr.
+    ENDIF.
+*    IF s_auart IS NOT INITIAL.
+*      DELETE lt_final WHERE auart NOT IN s_auart.
+*    ENDIF.
+    IF s_sort IS NOT INITIAL.
+      DELETE lt_final WHERE plan_sort NOT IN s_sort.
+    ENDIF.
+
+
+    MOVE-CORRESPONDING lt_final TO me->gt_output.
+
+  ENDMETHOD.
+
+
+ENDCLASS.
