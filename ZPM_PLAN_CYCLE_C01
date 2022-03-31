@@ -1,0 +1,184 @@
+*&---------------------------------------------------------------------*
+*&  Include           ZPM_PLAN_CYCLE_C01
+*&---------------------------------------------------------------------*
+*       CLASS lcl_report DEFINITION
+*----------------------------------------------------------------------*
+*----------------------------------------------------------------------*
+CLASS lcl_report DEFINITION FINAL.
+
+**********************************************************************
+* PUBLIC SECTION
+**********************************************************************
+
+  PUBLIC SECTION.
+
+    DATA:
+* Object for ALV of MC
+      go_alv  TYPE REF TO lcl_alv,
+* Object for Data Selection
+      go_data TYPE REF TO lcl_data.
+
+*----------------------------------------------------------------------*
+* PUBLIC METHODS
+*----------------------------------------------------------------------*
+    METHODS:
+* Constructor
+      constructor.
+
+ENDCLASS.                    "lcl_alv_grid DEFINITION
+
+*----------------------------------------------------------------------*
+*       CLASS lcl_alv_grid DEFINITION
+*----------------------------------------------------------------------*
+* Class ALV - Inheriting from cl_alv_grid
+*----------------------------------------------------------------------*
+CLASS lcl_alv_grid DEFINITION FINAL
+        INHERITING FROM cl_gui_alv_grid.
+
+  PUBLIC SECTION.
+* Optimize columns width
+    METHODS: pbl_optimize_all_columns.
+
+ENDCLASS.                    "lcl_alv_grid DEFINITION
+*-----------------------------------------------------------------------
+*
+*       CLASS lcl_data DEFINITION
+*----------------------------------------------------------------------*
+*  Class for data selection and processing - CONTRACTS ALV
+*----------------------------------------------------------------------*
+CLASS lcl_data DEFINITION FINAL.
+
+**********************************************************************
+* PUBLIC SECTION
+**********************************************************************
+  PUBLIC SECTION.
+
+    DATA: gt_output TYPE STANDARD TABLE OF ty_output,
+          gs_output TYPE ty_output.
+
+
+*----------------------------------------------------------------------*
+* PUBLIC METHODS
+*----------------------------------------------------------------------*
+    METHODS:
+*-> Select data
+      select_data.
+
+**********************************************************************
+* PRIVATE SECTION
+**********************************************************************
+  PRIVATE SECTION.
+
+*----------------------------------------------------------------------*
+* PRIVATE METHODS
+*----------------------------------------------------------------------*
+
+    METHODS:
+*-> Select Sample data
+      select_sample_data.
+
+ENDCLASS.                    "lcl_data DEFINITION
+
+*----------------------------------------------------------------------*
+*       CLASS lcl_alv DEFINITION
+*----------------------------------------------------------------------*
+* Class ALV OO
+*----------------------------------------------------------------------*
+CLASS lcl_alv DEFINITION FINAL.
+
+**********************************************************************
+* PUBLIC SECTION
+**********************************************************************
+  PUBLIC SECTION.
+
+* Types
+    TYPES ty_table_tt TYPE STANDARD TABLE OF ty_output.
+
+* Internal Table
+    DATA: gt_outtab         TYPE  ty_table_tt.
+
+*----------------------------------------------------------------------*
+* PUBLIC METHODS
+*----------------------------------------------------------------------*
+    METHODS:
+* -> Constructor
+      constructor
+        IMPORTING it_outtab    TYPE ty_table_tt
+                  iv_structure TYPE dd02l-tabname,
+* -> Execute ALV
+      execute_alv,
+
+* -> Refresh ALV
+      refresh_alv,
+
+* -> Add buttons to the toolbar
+      handle_toolbar
+                  FOR EVENT toolbar OF lcl_alv_grid
+        IMPORTING e_object,
+
+* -> Data Changed Event for editable fields
+      handle_data_changed
+                  FOR EVENT data_changed OF lcl_alv_grid
+        IMPORTING er_data_changed,
+
+*--To be triggered after data changing is finished
+      handle_data_changed_finished
+                  FOR EVENT data_changed_finished OF lcl_alv_grid
+        IMPORTING e_modified,
+
+* -> User Commands
+      handle_user_command
+                  FOR EVENT user_command OF lcl_alv_grid
+        IMPORTING e_ucomm,
+
+* -> Double Click
+      handle_double_click
+                  FOR EVENT double_click OF lcl_alv_grid
+        IMPORTING e_row
+                  e_column,
+
+* -> Check changed data
+      check_changed_data,
+
+* -> Destroy
+      destroy.
+
+**********************************************************************
+* PRIVATE SECTION
+**********************************************************************
+  PRIVATE SECTION.
+
+* Constants
+    CONSTANTS: gc_a TYPE c LENGTH 1 VALUE 'A'.
+
+* Internal Tables
+    DATA: gt_exclude  TYPE  ui_functions,
+          gt_fieldcat TYPE  lvc_t_fcat.
+
+* Structures
+    DATA: gs_layout TYPE lvc_s_layo,
+          gs_print  TYPE lvc_s_prnt.
+
+* Objects
+    DATA: go_ccontainer TYPE REF TO cl_gui_docking_container,
+          go_alv_grid   TYPE REF TO lcl_alv_grid.
+
+* Variables
+    DATA gv_structure TYPE dd02l-tabname.
+
+*----------------------------------------------------------------------*
+* PRIVATE METHODS
+*----------------------------------------------------------------------*
+    METHODS:
+* -> Set events
+      set_events,
+* -> Set toolbar
+      set_toolbar,
+* -> Set field catalog
+      set_field_catalog,
+* -> Set layout
+      set_layout,
+* -> Set print
+      set_print.
+
+ENDCLASS.                    "lcl_alv DEFINITION
