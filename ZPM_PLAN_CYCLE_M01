@@ -1,0 +1,77 @@
+*&---------------------------------------------------------------------*
+*&  Include           ZPM_PLAN_CYCLE_M01
+*&---------------------------------------------------------------------*
+
+MODULE f_status_0100 OUTPUT.
+
+* Sets Status
+  SET PF-STATUS 'STATUS_MAIN'.
+
+* Sets Titlebar
+  SET TITLEBAR 'T_TITLE'.
+
+* Show ALV with Versions
+  IF go_report->go_alv IS NOT BOUND.
+
+    IF go_report->go_data IS BOUND.
+
+      IF go_report->go_data->gt_output IS NOT INITIAL.
+
+        CREATE OBJECT go_report->go_alv
+          EXPORTING
+            it_outtab    = go_report->go_data->gt_output
+            iv_structure = gc_structure.
+
+        go_report->go_alv->execute_alv( ).
+
+        FREE go_report->go_data.
+
+      ENDIF.
+
+    ENDIF.
+
+  ENDIF.
+
+ENDMODULE.                 " STATUS_0100  OUTPUT
+
+*---------------------------------------------------------------------*
+*&      Module  USER_COMMAND_0100  INPUT
+
+*---------------------------------------------------------------------*
+
+*       PAI: User Command 100
+*----------------------------------------------------------------------*
+MODULE f_user_command_0100 INPUT.
+
+  CASE gv_ok_code.
+
+* Back
+    WHEN gc_back.
+
+      IF go_report->go_alv IS BOUND.
+        go_report->go_alv->destroy( ).
+        FREE go_report->go_alv.
+      ENDIF.
+
+      LEAVE TO SCREEN 0.
+
+* Exit & Cancel
+    WHEN gc_exit
+      OR gc_cancel.
+
+      LEAVE PROGRAM.
+
+  ENDCASE.
+
+ENDMODULE.                 " USER_COMMAND_0100  INPUT
+
+*----------------------------------------------------------------------*
+*&      Module  F_CANCEL_COMMAND_0100  INPUT
+*----------------------------------------------------------------------*
+*       Exit Command
+*----------------------------------------------------------------------*
+MODULE f_exit_0100 INPUT.
+
+  LEAVE TO SCREEN 0.
+
+ENDMODULE.                 " F_CANCEL_COMMAND_0100  INPUT
