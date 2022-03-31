@@ -1,0 +1,264 @@
+*&---------------------------------------------------------------------*
+*&  Include           ZPM_PLAN_CYCLE_TOP
+*&---------------------------------------------------------------------*
+
+*----------------------------------------------------------------------*
+TABLES :
+*----------------------------------------------------------------------*
+  mpla,
+  mpos,
+  mmpt,
+  iflot,
+  t399g_t,
+  iloa,
+  iflotx_vs,
+  t370c_t,
+  rmipm.
+
+*----------------------------------------------------------------------*
+CLASS:
+*----------------------------------------------------------------------*
+lcl_alv_grid DEFINITION DEFERRED,
+lcl_alv      DEFINITION DEFERRED,
+lcl_data     DEFINITION DEFERRED,
+lcl_report   DEFINITION DEFERRED.
+
+*----------------------------------------------------------------------*
+TYPES:
+*----------------------------------------------------------------------*
+  ty_output   TYPE zpm_plan_cycle,
+  ty_t_output TYPE STANDARD TABLE OF ty_output.
+
+
+
+TYPES: BEGIN OF ty_final,
+         warpl     TYPE mpla-warpl,
+         wptxt     TYPE mpla-wptxt,
+         sttxt     TYPE t132t-sttxt, "
+         plan_sort TYPE mpla-plan_sort,
+         txt       TYPE rmipm-txt,
+         lv_char   TYPE rmipm-zykl1,    "Floating to Char
+         zeieh     TYPE mmpt-zeieh,
+         point     TYPE mmpt-point,
+         wapos     TYPE mpos-wapos,
+         pstxt     TYPE mpos-pstxt,
+         tplnr     TYPE mpla-tplnr,
+         pltxt     TYPE rmipm-pltxt,
+         auart     TYPE mpos-auart,
+         ilart     TYPE mpos-ilart,
+         arbpl     TYPE crhd-arbpl,
+         begru     TYPE mpla-begru,
+         abckz     TYPE iloa-abckz,
+         abctx     TYPE t370c_t-abctx,
+       END OF ty_final.
+
+DATA : lt_final TYPE TABLE OF ty_final,
+       lw_final TYPE ty_final.
+
+ TYPES :  BEGIN OF lt_range,
+             sign(1),
+             option(2),
+             low(18),
+             high(18),
+             END OF lt_range.
+
+
+TYPES : BEGIN OF ty_mpla,
+
+          warpl     TYPE mpla-warpl,
+          wptxt     TYPE mpla-wptxt,
+          tplnr     TYPE mpla-tplnr,
+          begru     TYPE mpla-begru,
+          objnr     TYPE mpla-objnr,
+          mptyp     TYPE mpla-mptyp,
+          plan_sort TYPE mpla-plan_sort,
+          del       TYPE char1,
+        END OF ty_mpla.
+
+DATA : lt_mpla TYPE TABLE OF ty_mpla,
+       lw_mpla TYPE ty_mpla.
+
+TYPES : BEGIN OF ty_mmpt,
+          warpl  TYPE mmpt-warpl,
+          nummer TYPE mmpt-nummer,
+          zykl1  TYPE mmpt-zykl1,
+          zeieh  TYPE mmpt-zeieh,
+          pak_text TYPE mmpt-pak_text,
+          point  TYPE mmpt-point,
+          zaehl TYPE mmpt-zaehl,
+        END OF ty_mmpt.
+
+DATA : lt_mmpt TYPE TABLE OF ty_mmpt,
+       lw_mmpt TYPE ty_mmpt.
+
+TYPES : BEGIN OF ty_mpos,
+          wapos  TYPE mpos-wapos,
+          warpl  TYPE mpos-warpl,
+          wstra  TYPE mpos-wstra,
+          pstxt  TYPE mpos-pstxt,                             "USBHOSA RXEK957224
+          plnty  TYPE mpos-plnty,                             "USBHOSA RXEK957224
+          plnnr  TYPE mpos-plnnr,                             "USBHOSA RXEK957224
+          plnal  TYPE mpos-plnal,
+          status TYPE mpos-status,
+          gewrk  TYPE mpos-gewrk,
+          iloan  TYPE mpos-iloan,
+          auart  TYPE mpos-auart,
+          ilart  TYPE mpos-ilart,
+        END OF ty_mpos.
+
+DATA : lt_mpos TYPE TABLE OF ty_mpos,
+       lw_mpos TYPE ty_mpos.
+
+TYPES : BEGIN OF ty_iloa,
+          iloan  TYPE iloa-iloan,
+          tplnr  TYPE iloa-tplnr,
+          abckz  TYPE iloa-abckz,
+        END OF ty_iloa.
+
+DATA : lt_iloa TYPE TABLE OF ty_iloa,
+       lw_iloa TYPE ty_iloa.
+
+
+
+
+TYPES : BEGIN OF ty_t399g_t,
+          spras     TYPE t399g_t-spras,
+          plan_sort TYPE t399g_t-plan_sort,
+          txt       TYPE t399g_t-txt,
+        END OF ty_t399g_t.
+
+DATA : lt_t399g_t TYPE TABLE OF ty_t399g_t,
+       lw_t399g_t TYPE ty_t399g_t.
+
+TYPES : BEGIN OF ty_iflotx,
+          tplnr TYPE iflotx-tplnr,
+          spras TYPE iflotx-spras,
+          pltxt TYPE iflotx-pltxt,
+          pltxu TYPE iflotx-pltxu,
+        END OF ty_iflotx.
+
+DATA : lt_iflotx TYPE TABLE OF ty_iflotx,
+       lw_iflotx TYPE ty_iflotx.
+
+TYPES : BEGIN OF ty_t132t,
+          spras TYPE t132t-spras,
+          statm TYPE t132t-statm,
+          sttxt TYPE t132t-sttxt,
+        END OF ty_t132t.
+
+DATA : lt_t132t TYPE TABLE OF ty_t132t,
+       lw_t132t TYPE ty_t132t.
+
+TYPES : BEGIN OF ty_rmipm,
+          pltxt  TYPE rmipm-pltxt,
+          txt    TYPE rmipm-txt,
+          gewerk TYPE rmipm-gewerk,
+        END OF ty_rmipm.
+
+DATA : lt_rmipm TYPE TABLE OF ty_rmipm,
+       lw_rmipm TYPE ty_rmipm.
+
+TYPES : BEGIN OF ty_crhd,
+          objty TYPE crhd-objty,
+          objid TYPE crhd-objid,
+          arbpl TYPE crhd-arbpl,
+        END OF ty_crhd.
+
+DATA : lt_crhd TYPE TABLE OF ty_crhd,
+       lw_crhd TYPE ty_crhd.
+
+TYPES : BEGIN OF ty_t370c_t,
+          spras TYPE t370c_t-spras,
+          abckz	TYPE t370c_t-abckz,
+          abctx	TYPE t370c_t-abctx,
+        END OF ty_t370c_t.
+
+DATA : lt_t370c_t TYPE TABLE OF ty_t370c_t,
+       lw_t370c_t TYPE ty_t370c_t.
+
+TYPES : BEGIN OF ty_t006,                                       "USBHOSA RXEK957224
+          msehi TYPE t006-msehi,
+          zaehl TYPE t006-zaehl,
+          nennr TYPE t006-nennr,
+END OF ty_t006.
+
+DATA : lt_t006 TYPE TABLE OF ty_t006,
+       lw_t006 TYPE ty_t006.
+
+TYPES : BEGIN OF ty_plas,
+          plnty TYPE plas-plnty,
+          plnnr TYPE plas-plnnr,
+          plnal TYPE plas-plnal,
+          plnfl TYPE plas-plnfl,
+          plnkn TYPE plas-plnkn,
+          zaehl TYPE plas-zaehl,
+END OF ty_plas.
+
+DATA : lt_plas TYPE TABLE OF ty_plas,
+       lw_plas TYPE ty_plas.
+
+TYPES : BEGIN OF ty_plwp,
+          plnty TYPE plwp-plnty,
+          plnnr TYPE plwp-plnnr,
+          plnal TYPE plwp-plnal,
+          plnfl TYPE plwp-plnfl,
+          plnkn TYPE plwp-plnkn,
+          paket TYPE plwp-paket,
+          zaehl TYPE plwp-zaehl,
+          datuv TYPE plwp-datuv,
+          loekz TYPE plwp-loekz,
+ END OF ty_plwp.
+
+DATA : lt_plwp TYPE TABLE OF ty_plwp,
+        lw_plwp TYPE ty_plwp.
+
+DATA : ltt_plwp TYPE plwp_tab,
+       ltt_plas TYPE plas_tab.
+
+DATA : days     TYPE i.
+
+TYPES : BEGIN OF wc_package_data.
+  INCLUDE STRUCTURE t351p AS t351p RENAMING WITH SUFFIX t351p.
+        INCLUDE STRUCTURE t351x AS t351x RENAMING WITH SUFFIX t351x.
+TYPES: END OF wc_package_data.
+
+TYPES: wc_t_package_data
+       TYPE wc_package_data OCCURS 0.
+
+TYPES: BEGIN OF wc_package_data_st_tl.
+        INCLUDE STRUCTURE plwp AS plwp RENAMING WITH SUFFIX plwp.
+        INCLUDE STRUCTURE t351p AS t351p RENAMING WITH SUFFIX strat.
+TYPES:   plan        LIKE mpos-warpl,
+         item        LIKE mpos-wapos,
+         wppos       LIKE mpos-wppos,
+         ind_valid(1) TYPE c.
+TYPES: END OF wc_package_data_st_tl.
+TYPES: wc_t_package_data_st_tl
+       TYPE wc_package_data_st_tl OCCURS 0.
+
+DATA : lt_package_data TYPE wc_t_package_data,
+       lv_temp_days TYPE i,
+       ls_c_t351 TYPE wc_t351.
+
+
+*----------------------------------------------------------------------*
+CONSTANTS:
+*----------------------------------------------------------------------*
+
+  gc_structure TYPE tabname   VALUE 'ZPM_PLAN_CYCLE',
+  gc_back      TYPE sy-ucomm  VALUE 'BACK',
+  gc_exit      TYPE sy-ucomm  VALUE 'EXIT',
+  gc_cancel    TYPE sy-ucomm  VALUE 'CANCEL',
+  gc_ok        TYPE sy-ucomm  VALUE 'OK',
+  gc_x         TYPE char4     VALUE 'X',
+  gc_zm        TYPE char10    VALUE 'ZM',
+  gc_pm        TYPE char10    VALUE 'PM'.
+
+*----------------------------------------------------------------------*
+DATA:
+*----------------------------------------------------------------------*
+*Variables
+  gv_ok_code TYPE sy-ucomm,
+
+* Objects
+  go_report  TYPE REF TO lcl_report.
