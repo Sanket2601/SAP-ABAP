@@ -1,0 +1,18 @@
+*&---------------------------------------------------------------------*
+*&  Include           ZPM_PLAN_CYCLE_F00
+*&---------------------------------------------------------------------*
+
+
+
+SELECTION-SCREEN BEGIN OF BLOCK B1 WITH FRAME TITLE TEXT-001.
+  SELECT-OPTIONS S_WARPL FOR MPLA-WARPL.
+  SELECT-OPTIONS S_WPTXT FOR MPLA-WPTXT LOWER CASE.
+  SELECT-OPTIONS S_SORT FOR MPLA-PLAN_SORT.
+  SELECT-OPTIONS S_TPLNR FOR ILOA-TPLNR.
+*+USBHOSA | 23rd March 2021 | Addition of logic for Strategy / Multiple Cycles
+*  SELECT-OPTIONS S_AUART FOR MPOS-AUART.
+*-USBHOSA | 23rd March 2021 | Addition of logic for Strategy / Multiple Cycles
+  SELECT-OPTIONS S_BEGRU FOR MPLA-BEGRU OBLIGATORY.
+SELECTION-SCREEN END OF BLOCK B1.
+
+AT SELECTION-SCREEN OUTPUT.
