@@ -1,0 +1,408 @@
+*&---------------------------------------------------------------------*
+*&  Include           ZPM_PLAN_CYCLE_C02
+*&---------------------------------------------------------------------*
+CLASS lcl_report IMPLEMENTATION.
+
+  METHOD constructor.
+
+* Create Object
+    CREATE OBJECT go_data.
+
+    IF go_data IS BOUND.
+* Select data for ALV
+      CALL METHOD go_data->select_data( ).
+
+      IF go_data->gt_output IS NOT INITIAL.
+* Call ALV screen
+        CALL SCREEN 100.
+
+      ELSE.
+
+* Message -> No data selected.
+        MESSAGE 'No Data Selected'(t02)
+         TYPE ycons_msgty_i
+         DISPLAY LIKE ycons_msgty_e.
+
+      ENDIF.
+
+    ENDIF.
+
+  ENDMETHOD.     "constructor
+
+
+ENDCLASS.                    "lcl_bconf IMPLEMENTATION
+
+*----------------------------------------------------------------------*
+*       CLASS lcl_alv_grid IMPLEMENTATION
+*----------------------------------------------------------------------*
+* Class ALV - Inheriting from cl_alv_grid
+*----------------------------------------------------------------------*
+CLASS lcl_alv_grid IMPLEMENTATION.
+
+* Optimize columns width (public)
+  METHOD pbl_optimize_all_columns.
+
+    CALL METHOD me->optimize_all_cols
+      EXPORTING
+        include_header = 1
+      EXCEPTIONS
+        error          = 1
+        OTHERS         = 2.
+
+    IF sy-subrc IS NOT INITIAL.
+
+      MESSAGE ID     sy-msgid
+              TYPE   sy-msgty
+              NUMBER sy-msgno
+              WITH   sy-msgv1
+                     sy-msgv2
+                     sy-msgv3
+                     sy-msgv4.
+
+    ENDIF.
+
+  ENDMETHOD.                    "pbl_optimize_all_columns
+
+ENDCLASS.                    "lcl_alv_grid IMPLEMENTATION
+
+*----------------------------------------------------------------------*
+*       CLASS lcl_alv IMPLEMENTATION
+*----------------------------------------------------------------------*
+* Class ALV OO
+*----------------------------------------------------------------------*
+CLASS lcl_alv IMPLEMENTATION.
+
+  METHOD constructor.
+
+    gt_outtab    = it_outtab.
+    gv_structure  = iv_structure.
+
+  ENDMETHOD.                    "constructor
+
+  METHOD execute_alv.
+
+*Local Structures
+    DATA: ls_variant TYPE disvariant.
+
+* Local variables
+    DATA: lv_style TYPE i.
+
+    lv_style = cl_gui_control=>ws_child + cl_gui_control=>ws_visible.
+
+* Creates the Container object
+    CREATE OBJECT go_ccontainer
+      EXPORTING
+        side                        =
+                                      cl_gui_docking_container=>dock_at_top
+        extension                   = 3000
+        style                       = lv_style
+      EXCEPTIONS
+        cntl_error                  = 1
+        cntl_system_error           = 2
+        create_error                = 3
+        lifetime_error              = 4
+        lifetime_dynpro_dynpro_link = 5.
+
+
+    IF sy-subrc IS NOT INITIAL.
+
+      MESSAGE ID sy-msgid
+            TYPE sy-msgty
+          NUMBER sy-msgno
+            WITH sy-msgv1
+                 sy-msgv2
+                 sy-msgv3
+                 sy-msgv4.
+    ENDIF.
+
+* Creates the ALV Grid object
+    CREATE OBJECT go_alv_grid
+      EXPORTING
+        i_parent          = go_ccontainer
+        i_appl_events     = abap_true
+      EXCEPTIONS
+        error_cntl_create = 1
+        error_cntl_init   = 2
+        error_cntl_link   = 3
+        error_dp_create   = 4
+        OTHERS            = 5.
+
+    IF sy-subrc IS NOT INITIAL.
+
+      MESSAGE ID sy-msgid
+            TYPE sy-msgty
+          NUMBER sy-msgno
+            WITH sy-msgv1
+                 sy-msgv2
+                 sy-msgv3
+                 sy-msgv4.
+
+    ENDIF.
+
+
+* ALV events
+
+* Configure ALV events
+    CALL METHOD me->set_events.
+
+* Exclude buttons from toolbar.
+    CALL METHOD me->set_toolbar.
+
+* Field Catalog
+    CALL METHOD me->set_field_catalog.
+
+* Layout
+    CALL METHOD me->set_layout.
+
+* Print Settings
+    CALL METHOD me->set_print.
+
+* Allows the ALV edition - Uncomment in case of Editable ALV
+*    CALL METHOD go_alv_grid->set_ready_for_input.
+
+* ALV Variant
+    ls_variant-report = sy-repid.
+
+* Displays ALV
+    CALL METHOD go_alv_grid->set_table_for_first_display
+      EXPORTING
+        i_buffer_active               = abap_true
+        i_save                        = gc_a
+        i_default                     = abap_true
+        is_variant                    = ls_variant
+        is_layout                     = gs_layout
+        is_print                      = gs_print
+        it_toolbar_excluding          = gt_exclude
+      CHANGING
+        it_outtab                     = me->gt_outtab
+        it_fieldcatalog               = gt_fieldcat
+      EXCEPTIONS
+        invalid_parameter_combination = 1
+        program_error                 = 2
+        too_many_lines                = 3
+        OTHERS                        = 4.
+
+
+    IF sy-subrc IS NOT INITIAL.
+
+      MESSAGE ID sy-msgid
+            TYPE sy-msgty
+          NUMBER sy-msgno
+            WITH sy-msgv1
+                 sy-msgv2
+                 sy-msgv3
+                 sy-msgv4.
+
+    ENDIF.
+
+  ENDMETHOD.                    "execute_alv
+
+  METHOD refresh_alv.
+
+    DATA ls_stable TYPE lvc_s_stbl.
+
+* Refresh ALV
+    ls_stable-row = abap_true.
+    ls_stable-col = abap_true.
+
+    CALL METHOD go_alv_grid->refresh_table_display
+      EXPORTING
+        is_stable      = ls_stable
+        i_soft_refresh = abap_true
+      EXCEPTIONS
+        finished       = 1
+        OTHERS         = 2.
+
+    IF sy-subrc IS NOT INITIAL.
+
+      MESSAGE ID     sy-msgid
+              TYPE   sy-msgty
+              NUMBER sy-msgno
+              WITH   sy-msgv1
+                     sy-msgv2
+                     sy-msgv3
+                     sy-msgv4.
+
+    ENDIF.
+
+* Optimize column width
+    CALL METHOD go_alv_grid->pbl_optimize_all_columns.
+
+  ENDMETHOD.                    "refresh_alv
+
+  METHOD set_events.
+
+* Adds toolbar event
+    SET HANDLER me->handle_toolbar
+          FOR go_alv_grid.
+
+* Adds data changed event
+    SET HANDLER me->handle_data_changed
+          FOR go_alv_grid.
+
+    SET HANDLER me->handle_data_changed_finished
+             FOR go_alv_grid.
+
+* Adds user command event
+    SET HANDLER me->handle_user_command
+          FOR go_alv_grid.
+
+* Adds double click event
+    SET HANDLER me->handle_double_click
+            FOR go_alv_grid.
+
+
+* Register events
+    CALL METHOD go_alv_grid->register_edit_event
+      EXPORTING
+        i_event_id = cl_gui_alv_grid=>mc_evt_modified
+      EXCEPTIONS
+        error      = 1
+        OTHERS     = 2.
+
+    IF sy-subrc IS NOT INITIAL.
+
+      MESSAGE ID     sy-msgid
+              TYPE   sy-msgty
+              NUMBER sy-msgno
+              WITH   sy-msgv1
+                     sy-msgv2
+                     sy-msgv3
+                     sy-msgv4.
+
+    ENDIF.
+
+  ENDMETHOD.                    "set_events
+
+  METHOD set_toolbar.
+
+  ENDMETHOD.                    "set_toolbar
+
+  METHOD set_field_catalog.
+
+* Local Field-Symbols
+    FIELD-SYMBOLS: <ls_fieldcat> TYPE lvc_s_fcat .
+    CONSTANTS: lc_text  TYPE char4 VALUE 'TEXT',
+               lc_msgv2 TYPE sy-msgv2 VALUE 'MSGV2',
+               lc_msgv3 TYPE sy-msgv3 VALUE 'MSGV3',
+               lc_x     TYPE char1 VALUE 'X'.
+
+* Field Catalog
+    CALL FUNCTION 'LVC_FIELDCATALOG_MERGE'
+      EXPORTING
+        i_structure_name       = gv_structure
+      CHANGING
+        ct_fieldcat            = gt_fieldcat
+      EXCEPTIONS
+        inconsistent_interface = 1
+        program_error          = 2
+        OTHERS                 = 3.
+
+
+    IF sy-subrc IS NOT INITIAL.
+
+      MESSAGE ID sy-msgid
+            TYPE sy-msgty
+          NUMBER sy-msgno
+            WITH sy-msgv1
+                 sy-msgv2
+                 sy-msgv3
+                 sy-msgv4.
+    ELSE.
+
+      LOOP AT gt_fieldcat
+        ASSIGNING <ls_fieldcat>.
+
+
+        CASE <ls_fieldcat>-fieldname.
+          WHEN lc_text.
+            <ls_fieldcat>-reptext       =  'Text 150'(003).
+            <ls_fieldcat>-scrtext_l     =  'Message Text'(001).
+          WHEN lc_msgv2.
+            <ls_fieldcat>-no_out = lc_x.
+          WHEN lc_msgv3.
+            <ls_fieldcat>-no_out = lc_x.
+          WHEN OTHERS.
+        ENDCASE.
+
+      ENDLOOP.
+
+    ENDIF.
+
+  ENDMETHOD.                    "set_field_catalog
+
+  METHOD set_layout.
+
+* Local Constants
+    CONSTANTS: lc_sel_mode   TYPE lvc_libox VALUE 'D'.
+
+    CLEAR gs_layout.
+
+* Selection mode
+    gs_layout-sel_mode   = lc_sel_mode.
+* Zebra style
+    gs_layout-zebra      = abap_true.
+* Column with optimized
+    gs_layout-cwidth_opt = abap_true.
+* No rowmark
+    gs_layout-no_rowmark = abap_true.
+
+  ENDMETHOD.                    "set_layout
+
+  METHOD set_print.
+
+    gs_print-grpchgedit = abap_true.
+    gs_print-prntselinf = abap_true.
+    gs_print-prntlstinf = abap_true.
+
+  ENDMETHOD.                    "set_print
+
+  METHOD handle_toolbar.
+
+
+  ENDMETHOD.                    "handle_toolbar
+
+  METHOD handle_data_changed.
+
+  ENDMETHOD.                    "handle_data_changed
+
+*--Handle Data Changed Finished
+  METHOD handle_data_changed_finished .
+
+  ENDMETHOD .                    "handle_data_changed_finished
+
+  METHOD handle_user_command.
+
+  ENDMETHOD.                    "handle_user_command
+
+  METHOD handle_double_click.
+
+  ENDMETHOD.                    "handle_double_click
+
+  METHOD check_changed_data.
+
+    DATA: lv_valid   TYPE c,
+          lv_refresh TYPE c.
+
+    CALL METHOD go_alv_grid->check_changed_data
+      IMPORTING
+        e_valid   = lv_valid
+      CHANGING
+        c_refresh = lv_refresh.
+
+  ENDMETHOD.                    "check_changed_data
+
+
+  METHOD destroy.
+
+    go_alv_grid->free( ).
+    go_ccontainer->free( ).
+
+    CLEAR: go_ccontainer,
+           go_alv_grid,
+           gv_structure.
+
+  ENDMETHOD.                    "destroy
+
+
+ENDCLASS.                    "lcl_alv IMPLEMENTATION
